@@ -8,26 +8,31 @@ import queue
 import rtmidi
 
 import logging
-log = logging.getLogger('werkzeug')
+
+log = logging.getLogger("werkzeug")
 log.setLevel(logging.ERROR)
-print('http://127.0.0.1:5000/')
+print("http://127.0.0.1:5000/")
 app = Flask(__name__)
 global Q
 Q = queue.Queue()
 
 
-
-@app.route('/')
+@app.route("/")
 def home():
     # args = Args()
     # model = load_model(args)
-    model = load_model('model-180000.pt')
+    model = load_model("model-180000.pt")
     global Q
-    t1 = Thread(target=get_buffer_and_transcribe, name=get_buffer_and_transcribe, args=(model, Q))
+    t1 = Thread(
+        target=get_buffer_and_transcribe,
+        name=get_buffer_and_transcribe,
+        args=(model, Q),
+    )
     t1.start()
-    return render_template('home.html')
+    return render_template("home.html")
 
-@app.route('/_amt', methods= ['GET', 'POST'])
+
+@app.route("/_amt", methods=["GET", "POST"])
 def amt():
     global Q
     onsets = []
@@ -38,18 +43,19 @@ def amt():
         offsets += rst[1]
     return jsonify(on=onsets, off=offsets)
 
+
 def get_buffer_and_transcribe(model, q):
     CHUNK = 512
     FORMAT = pyaudio.paInt16
-    CHANNELS = pyaudio.PyAudio().get_default_input_device_info()['maxInputChannels']
+    CHANNELS = pyaudio.PyAudio().get_default_input_device_info()["maxInputChannels"]
     RATE = 16000
 
-    midiout = rtmidi.MidiOut()
-    available_ports = midiout.get_ports()
+    midiout = rtmidi.RtMidiOut()
+    available_ports = midiout.getPortCount()
     if available_ports:
-        midiout.open_port(0)
+        midiout.openPort(0)
     else:
-        midiout.open_virtual_port("My virtual output")
+        midiout.openVirtualPort("My virtual output")
 
     stream = MicrophoneStream(RATE, CHUNK, CHANNELS)
     transcriber = OnlineTranscriber(model, return_roll=False)
@@ -66,19 +72,22 @@ def get_buffer_and_transcribe(model, q):
             frame_output = transcriber.inference(decoded)
             on_pitch += frame_output[0]
             for pitch in frame_output[0]:
-                note_on = [0x90, pitch + 21, 64]
-                midiout.send_message(note_on)
-            for pitch in  frame_output[1]:
-                note_off = [0x90, pitch + 21, 0]
+                # note_on = [0x90, pitch + 21, 64]
+                msg = rtmidi.MidiMessage.noteOn(0x90, pitch + 21, 64)
+                midiout.sendMessage(msg)
+            for pitch in frame_output[1]:
+                # note_off = [0x90, pitch + 21, 0]
+                msg = rtmidi.MidiMessage.noteOff(0x90, pitch + 21)
                 pitch_count = on_pitch.count(pitch)
-                [midiout.send_message(note_off) for i in range(pitch_count)]
+                [midiout.sendMessage(msg) for i in range(pitch_count)]
             on_pitch = [x for x in on_pitch if x not in frame_output[1]]
             q.put(frame_output)
             # print(sum(frame_output))
         stream.closed = True
     print("* done recording")
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     # for i in range(0, p.get_device_count()):
     #     print(i, p.get_device_info_by_index(i)['name'])
 
