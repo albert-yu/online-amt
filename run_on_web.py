@@ -50,12 +50,12 @@ def get_buffer_and_transcribe(model, q):
     CHANNELS = pyaudio.PyAudio().get_default_input_device_info()["maxInputChannels"]
     RATE = 16000
 
-    midiout = rtmidi.RtMidiOut()
-    available_ports = midiout.getPortCount()
+    midiout = rtmidi.MidiOut()
+    available_ports = midiout.get_ports()
     if available_ports:
-        midiout.openPort(0)
+        midiout.open_port(0)
     else:
-        midiout.openVirtualPort("My virtual output")
+        midiout.open_virtual_port("My virtual output")
 
     stream = MicrophoneStream(RATE, CHUNK, CHANNELS)
     transcriber = OnlineTranscriber(model, return_roll=False)
@@ -72,14 +72,14 @@ def get_buffer_and_transcribe(model, q):
             frame_output = transcriber.inference(decoded)
             on_pitch += frame_output[0]
             for pitch in frame_output[0]:
-                # note_on = [0x90, pitch + 21, 64]
-                msg = rtmidi.MidiMessage.noteOn(0x90, pitch + 21, 64)
-                midiout.sendMessage(msg)
+                note_on = [0x90, pitch + 21, 64]
+                # msg = rtmidi.MidiMessage.noteOn(0x90, pitch + 21, 64)
+                midiout.send_message(note_on)
             for pitch in frame_output[1]:
-                # note_off = [0x90, pitch + 21, 0]
-                msg = rtmidi.MidiMessage.noteOff(0x90, pitch + 21)
+                note_off = [0x90, pitch + 21, 0]
+                # msg = rtmidi.MidiMessage.noteOff(0x90, pitch + 21)
                 pitch_count = on_pitch.count(pitch)
-                [midiout.sendMessage(msg) for i in range(pitch_count)]
+                [midiout.send_message(note_off) for i in range(pitch_count)]
             on_pitch = [x for x in on_pitch if x not in frame_output[1]]
             q.put(frame_output)
             # print(sum(frame_output))
