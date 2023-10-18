@@ -57,7 +57,7 @@ def get_buffer_and_transcribe(model, q):
     else:
         midiout.open_virtual_port("My virtual output")
 
-    stream = MicrophoneStream(RATE, CHUNK, CHANNELS)
+    # stream = MicrophoneStream(RATE, CHUNK, CHANNELS)
     transcriber = OnlineTranscriber(model, return_roll=False)
     with MicrophoneStream(RATE, CHUNK, CHANNELS) as stream:
         audio_generator = stream.generator()
@@ -83,8 +83,8 @@ def get_buffer_and_transcribe(model, q):
             on_pitch = [x for x in on_pitch if x not in frame_output[1]]
             q.put(frame_output)
             # print(sum(frame_output))
-        stream.closed = True
-    print("* done recording")
+        # stream.closed = True
+    # print("* done recording")
 
 
 if __name__ == "__main__":
