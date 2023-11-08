@@ -12,7 +12,7 @@ ALLOWED_EXTENSIONS = {"mp4", "m4a", "wav", "mp3"}
 MODEL_FILE = "model-180000.pt"
 
 
-def allowed_file(filename):
+def allowed_file(filename: str):
     return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
@@ -74,10 +74,10 @@ def receive_and_transcribe():
         return flask.render_template("index.html")
     model = transcribe.load_model(MODEL_FILE)
     # check if the post request has the file part
-    if "file" not in flask.request.files:
+    if "audio-file" not in flask.request.files:
         flask.flash("No file part")
         return flask.redirect(flask.request.url)
-    file = flask.request.files["file"]
+    file = flask.request.files["audio-file"]
     # If the user does not select a file, the browser submits an
     # empty file without a filename.
     if file.filename == "":
@@ -86,7 +86,7 @@ def receive_and_transcribe():
     if file and allowed_file(file.filename):
         filename = secure_filename(file.filename)
         file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
-        return flask.redirect(flask.url_for("download", name=filename))
+        return flask.redirect(flask.url_for("download_file", name=filename))
 
 
 @app.route("/")
