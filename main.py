@@ -1,14 +1,27 @@
-from flask import Flask, render_template
+import os
+import flask
 from mic_stream import MicrophoneStream
 import pyaudio
 import rtmidi
 import numpy as np
 import transcribe
+from werkzeug.utils import secure_filename
 
-
-app = Flask(__name__)
-
+UPLOAD_FOLDER = "/path/to/the/uploads"
+ALLOWED_EXTENSIONS = {"mp4", "m4a", "wav", "mp3"}
 MODEL_FILE = "model-180000.pt"
+
+
+def allowed_file(filename):
+    return "." in filename and filename.rsplit(".", 1)[1].lower() in ALLOWED_EXTENSIONS
+
+
+app = flask.Flask(__name__)
+app.secret_key = "super secret key"
+app.config["SESSION_TYPE"] = "filesystem"
+
+# init_app(app)
+app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
 def get_buffer_and_transcribe(model, q):
@@ -50,14 +63,35 @@ def get_buffer_and_transcribe(model, q):
             q.put(frame_output)
 
 
-@app.route("/transcribe")
+@app.route("/download")
+def download_file():
+    return flask.render_template("download.html")
+
+
+@app.route("/transcribe", methods=["GET", "POST"])
 def receive_and_transcribe():
+    if flask.request.method == "GET":
+        return flask.render_template("index.html")
     model = transcribe.load_model(MODEL_FILE)
+    # check if the post request has the file part
+    if "file" not in flask.request.files:
+        flask.flash("No file part")
+        return flask.redirect(flask.request.url)
+    file = flask.request.files["file"]
+    # If the user does not select a file, the browser submits an
+    # empty file without a filename.
+    if file.filename == "":
+        flask.flash("No selected file")
+        return flask.redirect(flask.request.url)
+    if file and allowed_file(file.filename):
+        filename = secure_filename(file.filename)
+        file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
+        return flask.redirect(flask.url_for("download", name=filename))
 
 
 @app.route("/")
 def home():
-    return render_template("index.html")
+    return flask.render_template("index.html")
 
 
 def main():

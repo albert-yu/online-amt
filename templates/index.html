@@ -2,7 +2,12 @@
 {% block content %}
 
 <div id="main">
-  <form enctype="multipart/form-data" method="post" action="#">
+  <form enctype="multipart/form-data" method="POST" action="/transcribe">
+    <label for="uploader">Upload file</label>
+    <input id="uploader" type="file" accept="audio/*, .mp4, .m4a, .wav, .mp3" />
 
+    <button type="submit">Submit</button>
   </form>
 </div>
+
+{% endblock %}
