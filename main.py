@@ -29,7 +29,7 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
-CHUNK_SIZE = 512
+CHUNK_SIZE = 128
 SAMPLE_RATE = 16000
 
 
@@ -51,8 +51,6 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
     offset = 0
     since_last = 0
     while offset < len(audio_data):
-        if offset % 100000 == 0:
-            print("{} / {}".format(offset, len(audio_data)))
         data = audio_data[offset : offset + CHUNK_SIZE]
         decoded = np.frombuffer(data, dtype=np.int16) / 32768
         if CHANNELS > 1:
@@ -83,9 +81,9 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
         frames.append(frame_output)
         count_on, count_off = len(frame_output[0]), len(frame_output[1])
         if count_on == 0 and count_off == 0:
-            since_last += 3
+            since_last += 2
         else:
-            since_last = 3
+            since_last = 2
         offset += CHUNK_SIZE
     print("track len", len(track))
     print("* transcribed.")
