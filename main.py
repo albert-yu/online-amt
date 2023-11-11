@@ -41,7 +41,7 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
         midiout.open_virtual_port("My virtual output")
 
     transcriber = transcribe.OnlineTranscriber(model, return_roll=False)
-    print("* recording")
+    print("* transcribing")
     on_pitch = []
     frames = []
     data = stream.read(CHUNK)
@@ -64,6 +64,7 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
         on_pitch = [x for x in on_pitch if x not in frame_output[1]]
         frames.append(frame_output)
         data = stream.read(CHUNK)
+    print("* transcribed.")
     return frames
 
 
