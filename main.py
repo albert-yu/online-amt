@@ -30,7 +30,7 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
 CHUNK_SIZE = 512
-SAMPLE_RATE = 44100
+SAMPLE_RATE = 16000
 
 
 def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
@@ -85,7 +85,7 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
         if count_on == 0 and count_off == 0:
             since_last += 1
         else:
-            since_last = 0
+            since_last = 1
         offset += CHUNK_SIZE
     print("track len", len(track))
     print("* transcribed.")
