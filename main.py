@@ -83,9 +83,9 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
         frames.append(frame_output)
         count_on, count_off = len(frame_output[0]), len(frame_output[1])
         if count_on == 0 and count_off == 0:
-            since_last += 1
+            since_last += 3
         else:
-            since_last = 1
+            since_last = 3
         offset += CHUNK_SIZE
     print("track len", len(track))
     print("* transcribed.")
