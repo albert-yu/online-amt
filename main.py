@@ -32,6 +32,8 @@ app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 CHUNK_SIZE = 128
 SAMPLE_RATE = 16000
 
+ADJUSTMENT = 21 + 12
+
 
 def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
     CHANNELS = pyaudio.PyAudio().get_default_input_device_info()["maxInputChannels"]
@@ -61,7 +63,7 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
         for pitch in frame_output[0]:
             velocity = 64
             note_on = mido.Message(
-                "note_on", note=pitch + 21, velocity=velocity, time=since_last
+                "note_on", note=pitch + ADJUSTMENT, velocity=velocity, time=since_last
             )
             track.append(note_on)
             # note_on = [CHANNEL, pitch + 21, velocity]
@@ -74,7 +76,7 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
             # [midiout.send_message(note_off) for i in range(pitch_count)]
             pitch_count = on_pitch.count(pitch)
             note_off = mido.Message(
-                "note_off", note=pitch + 21, velocity=velocity, time=since_last
+                "note_off", note=pitch + ADJUSTMENT, velocity=velocity, time=since_last
             )
             [track.append(note_off) for i in range(pitch_count)]
         on_pitch = [x for x in on_pitch if x not in frame_output[1]]
