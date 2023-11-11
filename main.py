@@ -13,7 +13,7 @@ import transcribe
 from werkzeug.utils import secure_filename
 
 UPLOAD_FOLDER = "uploaded"
-ALLOWED_EXTENSIONS = {"mp4", "m4a", "wav", "mp3"}
+ALLOWED_EXTENSIONS = {"mp3"}
 MODEL_FILE = "model-180000.pt"
 
 
