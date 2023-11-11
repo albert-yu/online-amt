@@ -26,11 +26,10 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
-TARGET_SIZE = 5120
+CHUNK = 512
 
 
 def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
-    CHUNK = 512
     CHANNELS = pyaudio.PyAudio().get_default_input_device_info()["maxInputChannels"]
     RATE = 16000
 
@@ -45,7 +44,7 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
     print("* recording")
     on_pitch = []
     frames = []
-    data = stream.read(TARGET_SIZE)
+    data = stream.read(CHUNK)
     while data:
         decoded = np.frombuffer(data, dtype=np.int16) / 32768
         if CHANNELS > 1:
@@ -64,7 +63,7 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
             [midiout.send_message(note_off) for i in range(pitch_count)]
         on_pitch = [x for x in on_pitch if x not in frame_output[1]]
         frames.append(frame_output)
-        data = stream.read(TARGET_SIZE)
+        data = stream.read(CHUNK)
     return frames
 
 
