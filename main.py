@@ -26,6 +26,9 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
+TARGET_SIZE = 5120
+
+
 def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
     CHUNK = 512
     CHANNELS = pyaudio.PyAudio().get_default_input_device_info()["maxInputChannels"]
@@ -42,24 +45,26 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
     print("* recording")
     on_pitch = []
     frames = []
-    data = stream.read()
-    decoded = np.frombuffer(data, dtype=np.int16) / 32768
-    if CHANNELS > 1:
-        decoded = decoded.reshape(-1, CHANNELS)
-        decoded = np.mean(decoded, axis=1)
-    frame_output = transcriber.inference(decoded)
-    on_pitch += frame_output[0]
-    for pitch in frame_output[0]:
-        note_on = [0x90, pitch + 21, 64]
-        # msg = rtmidi.MidiMessage.noteOn(0x90, pitch + 21, 64)
-        midiout.send_message(note_on)
-    for pitch in frame_output[1]:
-        note_off = [0x90, pitch + 21, 0]
-        # msg = rtmidi.MidiMessage.noteOff(0x90, pitch + 21)
-        pitch_count = on_pitch.count(pitch)
-        [midiout.send_message(note_off) for i in range(pitch_count)]
-    on_pitch = [x for x in on_pitch if x not in frame_output[1]]
-    frames.append(frame_output)
+    data = stream.read(TARGET_SIZE)
+    while data:
+        decoded = np.frombuffer(data, dtype=np.int16) / 32768
+        if CHANNELS > 1:
+            decoded = decoded.reshape(-1, CHANNELS)
+            decoded = np.mean(decoded, axis=1)
+        frame_output = transcriber.inference(decoded)
+        on_pitch += frame_output[0]
+        for pitch in frame_output[0]:
+            note_on = [0x90, pitch + 21, 64]
+            # msg = rtmidi.MidiMessage.noteOn(0x90, pitch + 21, 64)
+            midiout.send_message(note_on)
+        for pitch in frame_output[1]:
+            note_off = [0x90, pitch + 21, 0]
+            # msg = rtmidi.MidiMessage.noteOff(0x90, pitch + 21)
+            pitch_count = on_pitch.count(pitch)
+            [midiout.send_message(note_off) for i in range(pitch_count)]
+        on_pitch = [x for x in on_pitch if x not in frame_output[1]]
+        frames.append(frame_output)
+        data = stream.read(TARGET_SIZE)
     return frames
 
 
