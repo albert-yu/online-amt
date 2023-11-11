@@ -27,7 +27,7 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
-CHUNK = 512
+CHUNK = 5120
 
 
 def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
