@@ -1,3 +1,4 @@
+import io
 import os
 import mido
 from typing import IO
@@ -6,6 +7,7 @@ from autoregressive.models import AR_Transcriber
 from mic_stream import MicrophoneStream
 import pyaudio
 import rtmidi
+import pydub
 import numpy as np
 import transcribe
 from werkzeug.utils import secure_filename
@@ -27,11 +29,16 @@ app.config["SESSION_TYPE"] = "filesystem"
 app.config["UPLOAD_FOLDER"] = UPLOAD_FOLDER
 
 
-CHUNK = 5120
+CHUNK_SIZE = 512
+SAMPLE_RATE = 44100
 
 
 def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
     CHANNELS = pyaudio.PyAudio().get_default_input_device_info()["maxInputChannels"]
+    mp3_bytes = stream.read()
+    audio = pydub.AudioSegment.from_mp3(io.BytesIO(mp3_bytes))
+    audio = audio.set_frame_rate(SAMPLE_RATE)
+    audio_data = audio.raw_data
     # RATE = 16000
     CHANNEL = 0x90
     mid = mido.MidiFile()
@@ -41,19 +48,17 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
     print("* transcribing")
     on_pitch = []
     frames = []
-    data = stream.read(CHUNK)
+    offset = 0
     since_last = 0
-    while data:
+    while offset < len(audio_data):
+        if offset % 100000 == 0:
+            print("{} / {}".format(offset, len(audio_data)))
+        data = audio_data[offset : offset + CHUNK_SIZE]
         decoded = np.frombuffer(data, dtype=np.int16) / 32768
         if CHANNELS > 1:
             decoded = decoded.reshape(-1, CHANNELS)
             decoded = np.mean(decoded, axis=1)
         frame_output = transcriber.inference(decoded)
-        count_on, count_off = len(frame_output[0]), len(frame_output[1])
-        if count_on == 0 and count_off == 0:
-            since_last += 1
-        else:
-            since_last = 0
         on_pitch += frame_output[0]
         for pitch in frame_output[0]:
             velocity = 64
@@ -76,7 +81,12 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
             [track.append(note_off) for i in range(pitch_count)]
         on_pitch = [x for x in on_pitch if x not in frame_output[1]]
         frames.append(frame_output)
-        data = stream.read(CHUNK)
+        count_on, count_off = len(frame_output[0]), len(frame_output[1])
+        if count_on == 0 and count_off == 0:
+            since_last += 1
+        else:
+            since_last = 0
+        offset += CHUNK_SIZE
     print("track len", len(track))
     print("* transcribed.")
     return frames, mid
