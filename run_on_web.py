@@ -46,7 +46,7 @@ def amt():
 
 def get_buffer_and_transcribe(model, q):
     CHUNK = 512
-    FORMAT = pyaudio.paInt16
+    # FORMAT = pyaudio.paInt16
     CHANNELS = pyaudio.PyAudio().get_default_input_device_info()["maxInputChannels"]
     RATE = 16000
 
@@ -60,7 +60,7 @@ def get_buffer_and_transcribe(model, q):
     # stream = MicrophoneStream(RATE, CHUNK, CHANNELS)
     transcriber = OnlineTranscriber(model, return_roll=False)
     with MicrophoneStream(RATE, CHUNK, CHANNELS) as stream:
-        audio_generator = stream.generator()
+        # audio_generator = stream.generator()
         print("* recording")
         on_pitch = []
         while True:
@@ -70,6 +70,7 @@ def get_buffer_and_transcribe(model, q):
                 decoded = decoded.reshape(-1, CHANNELS)
                 decoded = np.mean(decoded, axis=1)
             frame_output = transcriber.inference(decoded)
+            print("0: {}, 1: {}".format(len(frame_output[0]), len(frame_output[1])))
             on_pitch += frame_output[0]
             for pitch in frame_output[0]:
                 note_on = [0x90, pitch + 21, 64]
