@@ -34,26 +34,31 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
     CHANNELS = pyaudio.PyAudio().get_default_input_device_info()["maxInputChannels"]
     # RATE = 16000
     CHANNEL = 0x90
-    # mid = mido.MidiFile()
+    mid = mido.MidiFile()
     track = mido.MidiTrack()
-    # mid.tracks.append(track)
+    mid.tracks.append(track)
     transcriber = transcribe.OnlineTranscriber(model, return_roll=False)
     print("* transcribing")
     on_pitch = []
     frames = []
     data = stream.read(CHUNK)
-    delta_time = 0
+    since_last = 0
     while data:
         decoded = np.frombuffer(data, dtype=np.int16) / 32768
         if CHANNELS > 1:
             decoded = decoded.reshape(-1, CHANNELS)
             decoded = np.mean(decoded, axis=1)
         frame_output = transcriber.inference(decoded)
+        count_on, count_off = len(frame_output[0]), len(frame_output[1])
+        if count_on == 0 and count_off == 0:
+            since_last += 1
+        else:
+            since_last = 0
         on_pitch += frame_output[0]
         for pitch in frame_output[0]:
             velocity = 64
             note_on = mido.Message(
-                "note_on", note=pitch + 21, velocity=velocity, time=delta_time
+                "note_on", note=pitch + 21, velocity=velocity, time=since_last
             )
             track.append(note_on)
             # note_on = [CHANNEL, pitch + 21, velocity]
@@ -66,14 +71,15 @@ def get_buffer_and_transcribe(model: AR_Transcriber, stream: IO[bytes]):
             # [midiout.send_message(note_off) for i in range(pitch_count)]
             pitch_count = on_pitch.count(pitch)
             note_off = mido.Message(
-                "note_off", note=pitch + 21, velocity=velocity, time=delta_time
+                "note_off", note=pitch + 21, velocity=velocity, time=since_last
             )
             [track.append(note_off) for i in range(pitch_count)]
         on_pitch = [x for x in on_pitch if x not in frame_output[1]]
         frames.append(frame_output)
         data = stream.read(CHUNK)
+    print("track len", len(track))
     print("* transcribed.")
-    return frames, track
+    return frames, mid
 
 
 @app.route("/download/<name>")
@@ -97,14 +103,15 @@ def receive_and_transcribe():
         return flask.redirect(flask.request.url)
     if file and allowed_file(file.filename):
         model = transcribe.load_model(MODEL_FILE)
-        frames, track = get_buffer_and_transcribe(model, file.stream)
-        mid = mido.MidiFile()
-        mid.tracks.append(track)
+        frames, mid = get_buffer_and_transcribe(model, file.stream)
+        print("midi length: {}".format(mid.length))
         midi_filename = file.filename + ".midi"
         midi_file = os.path.join(app.config["UPLOAD_FOLDER"], midi_filename)
         mid.save(filename=midi_file)
 
         filename = secure_filename(file.filename)
+        file.seek(0)
+
         file.save(os.path.join(app.config["UPLOAD_FOLDER"], filename))
         return flask.redirect(flask.url_for("download_file", name=filename))
 

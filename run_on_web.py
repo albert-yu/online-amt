@@ -70,6 +70,7 @@ def get_buffer_and_transcribe(model, q):
                 decoded = decoded.reshape(-1, CHANNELS)
                 decoded = np.mean(decoded, axis=1)
             frame_output = transcriber.inference(decoded)
+            print("0: {}, 1: {}".format(len(frame_output[0]), len(frame_output[1])))
             on_pitch += frame_output[0]
             for pitch in frame_output[0]:
                 note_on = [0x90, pitch + 21, 64]
